@@ -1,3 +1,4 @@
+// Audit: DONE
 use crate::device::{Device, PowerMode};
 use anyhow::Result;
 use clap::{App, AppSettings, Arg, SubCommand};
@@ -291,6 +292,7 @@ if save is set, save current timer
 
             device.set_timer(mode, timer, enable, save)?;
         }
+        // Audit: this won't work as intended (will always set to disabled), see comment on `set_state` in `device.rs`
         ("set-state", Some(args)) => {
             let mode = args.value_of("mode").unwrap();
 

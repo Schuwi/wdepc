@@ -138,3 +138,32 @@ If `--save` present, save current setting.
 1. [HC320 SATA spec](https://documents.westerndigital.com/content/dam/doc-library/en_us/assets/public/western-digital/product/data-center-drives/ultrastar-dc-hc300-series/product-manual-ultrastar-dc-hc320-sata-oem-spec.pdf)
 2. https://serverfault.com/a/1047332
 3. [Seagate SCSI Reference](https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068k.pdf)
+
+# Audit (2025-06-01, Schuwi)
+
+I have audited the repository to ensure it does not contain any malicious code.
+
+## Audit Result
+
+I have found no malicious code in the repository. There might be some bugs, but they do not pose a security risk
+(the `set-state` subcommand might always disable the power mode timer even with the `--enable` flag set).
+
+For the low-level SCSI-to-ATA commands and unix SCSI interface, I have checked
+multiple independent sources to ensure correctness.
+
+For the high-level ATA commands I have only relied on the HC320 SATA spec [6.1] linked by the author,
+which is published by Western Digital and should be trustworthy.
+
+## References
+- [1.1] https://www.t10.org/lists/op-num.htm ([accessed 2025-06-01](https://web.archive.org/web/20250601094958/https://www.t10.org/lists/op-num.htm "Wayback Machine"))
+- [1.2] INCITS/T10: SCSI / ATA Translation (SAT), Draft 9 (13 September 2006, https://web.archive.org/web/20070221091003/http://www.t10.org/ftp/t10/drafts/sat/sat-r09.pdf)
+- [2.1] https://android.googlesource.com/platform/system/sepolicy/+/ae46511bfa62b56938b3df824bb2ee737dceaa7a/ioctl_defines ([accessed 2025-06-01](https://web.archive.org/web/20250601095826/https://android.googlesource.com/platform/system/sepolicy/+/ae46511bfa62b56938b3df824bb2ee737dceaa7a/ioctl_defines "Wayback Machine"))
+- [2.2] https://android.googlesource.com/platform/system/sepolicy/+/refs/heads/android15-qpr1-release/public/ioctl_defines ([accessed 2025-06-01](https://web.archive.org/web/20250601100201/https://android.googlesource.com/platform/system/sepolicy/+/refs/heads/android15-qpr1-release/public/ioctl_defines "Wayback Machine"))
+- 3: Douglas Gilbert
+- [3.1] https://sg.danny.cz/sg/sg_io.html ([accessed 2025-06-01](https://web.archive.org/web/20250601100457/https://sg.danny.cz/sg/sg_io.html "Wayback Machine"))
+- [3.2] https://tldp.org/HOWTO/SCSI-Generic-HOWTO/sg_io.html ([accessed 2025-06-01](https://web.archive.org/web/20250601100709/https://tldp.org/HOWTO/SCSI-Generic-HOWTO/sg_io.html "Wayback Machine"))
+- [3.3] https://tldp.org/HOWTO/SCSI-Generic-HOWTO/sg_io_hdr_t.html ([accessed 2025-06-01](https://web.archive.org/web/20250601101057/https://tldp.org/HOWTO/SCSI-Generic-HOWTO/sg_io_hdr_t.html "Wayback Machine"))
+- [4.1] https://github.com/torvalds/linux/blob/v6.15/include/scsi/sg.h ([accessed 2025-06-01](https://web.archive.org/web/20250601101854/https://github.com/torvalds/linux/blob/v6.15/include/scsi/sg.h "Wayback Machine"))
+- 5: Douglas Gilbert (sg3-utils)
+- [5.1] https://git.launchpad.net/ubuntu/+source/sg3-utils/tree/src/sg_sat_identify.c?h=ubuntu%2Fjammy ([accessed 2025-06-01](https://web.archive.org/web/20250601104102/https://git.launchpad.net/ubuntu/+source/sg3-utils/tree/src/sg_sat_identify.c?h=ubuntu%2Fjammy "Wayback Machine"))
+- [6.1] HC320 SATA Spec, https://documents.westerndigital.com/content/dam/doc-library/en_us/assets/public/western-digital/product/data-center-drives/ultrastar-dc-hc300-series/product-manual-ultrastar-dc-hc320-sata-oem-spec.pdf ([accessed 2025-06-01](https://web.archive.org/web/20250601120755/https://documents.westerndigital.com/content/dam/doc-library/en_us/assets/public/western-digital/product/data-center-drives/ultrastar-dc-hc300-series/product-manual-ultrastar-dc-hc320-sata-oem-spec.pdf "Wayback Machine"))

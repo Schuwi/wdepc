@@ -1,3 +1,4 @@
+// Audit: DONE
 use std::convert::TryInto;
 use std::ffi::CString;
 
@@ -27,6 +28,7 @@ pub enum PowerMode {
 
 impl PowerMode {
     pub fn id(&self) -> u8 {
+        // Reference: "Table 71" [6.1] pg. 103
         match self {
             PowerMode::Active => 0x81,
             PowerMode::IdleA => 0x81,
@@ -73,6 +75,7 @@ impl Device {
     /// Open device with given path
     ///
     /// **Require root**
+    // Audit: DONE
     pub fn open(device: impl AsRef<str>) -> Result<Device> {
         let device = device.as_ref();
 
@@ -91,8 +94,11 @@ impl Device {
     }
 
     /// Query current power mode
+    // Audit: DONE
     pub fn query_mode(&self) -> Result<PowerMode> {
         // todo: check EPC enable
+        // Reference: "Non-Data commands" [6.1] pg. 127
+        // Reference: "Check Power Mode (E5h/98h)" [6.1] pg. 134
         let mut cdb = build_ata_passthrough12(AtaCmd::CheckPowerMode, Protocol::None, 0, 0, 0, 0);
         let (_hdr, sense) = self.sg_io(&mut cdb, None, None)?;
 
@@ -109,7 +115,10 @@ impl Device {
     }
 
     /// Query device EPC setting
+    // Audit: DONE
     pub fn query_epc_setting(&self) -> Result<EPCSetting> {
+        // Reference: "Table 140" [6.1] pg. 186
+        // Audit: Reads the "Power Conditions log"
         let pcl = self.read_log_dma_ext(0x08)?;
 
         let idle_power_cond = &pcl[0..512];
@@ -131,6 +140,7 @@ impl Device {
         })
     }
 
+    // Audit: DONE
     fn read_log_dma_ext(&self, page: u8) -> Result<Vec<u8>> {
         let general_log = self.read_general_log();
         let max_size = general_log[page as usize * 2] as u16
@@ -138,8 +148,11 @@ impl Device {
 
         let mut buffer = Vec::with_capacity(512 * max_size as usize);
         buffer.resize(512 * max_size as usize, 0);
+        // Reference: "Read Log Ext (2Fh)" [6.1] pg. 185
+        // Reference: "Read Log DMA Ext (47h)" [6.1] pg. 217
         let mut cdb = build_ata_passthrough16(
             AtaCmd::ReadLogExtDma,
+            // Reference: "DMA Data-In Commands and DMA Data-Out Commands" [6.1] pg. 128
             Protocol::InDma,
             0,
             max_size,
@@ -152,12 +165,14 @@ impl Device {
         Ok(buffer)
     }
 
+    // Audit: DONE
     fn sg_io(
         &self,
         cdb: &mut [u8],
         in_data: Option<&[u8]>,
         out_data: Option<&mut [u8]>,
     ) -> Result<(SgIoHdr, [u8; 32])> {
+        // Reference: "SG_IO ioctl overview" section [3.1]
         let mut hdr = SgIoHdr::default();
         let mut sense = [0u8; 32];
 
@@ -192,12 +207,16 @@ impl Device {
         Ok((hdr, sense))
     }
 
+    // Audit: DONE
     fn read_general_log(&self) -> &[u8] {
         use once_cell::sync::OnceCell;
         static GENERAL_LOG: OnceCell<[u8; 512]> = OnceCell::new();
 
         GENERAL_LOG.get_or_init(|| {
             let mut buffer = [0u8; 512];
+            // Reference: "Read Log Ext (2Fh)" [6.1] pg. 185
+            // Reference: "Read Log DMA Ext (47h)" [6.1] pg. 217
+            // Reference: "DMA Data-In Commands and DMA Data-Out Commands" [6.1] pg. 128
             let mut cdb =
                 build_ata_passthrough16(AtaCmd::ReadLogExtDma, Protocol::InDma, 0, 1, 0, 0);
             let (_hdr, _sense) = self
@@ -210,12 +229,17 @@ impl Device {
     }
 
     /// Set device to specific power mode
+    // Audit: DONE
     pub fn goto_cond(&mut self, mode: PowerMode) -> Result<()> {
+        // Reference: "Set Features (EFh)" [6.1] pg. 254
         let mut cdb = build_ata_passthrough12(
             AtaCmd::SetFeature,
+            // Reference: "Non-Data commands" [6.1] pg. 127
             Protocol::None,
+            // Reference: "4Ah Extended Power Conditions" [6.1] pg. 254
             0b0100_1010,
             mode.id() as u16,
+            // Reference: "Go To Power Condition Subcommand" [6.1] pg. 258
             1,
             0,
         );
@@ -229,19 +253,25 @@ impl Device {
     /// if `enable` set true, enable current timer else disable
     ///
     /// if `save` set true, save current timer setting
+    // Audit: DONE
     pub fn set_timer(
         &mut self,
         mode: PowerMode,
+        // Audit: unit is 100ms because bit 7 of sector_number is set to 0 [6.1] pg. 260
         timer: u16,
         enable: bool,
         save: bool,
     ) -> Result<()> {
         let enable = if enable { 1 } else { 0 };
         let save = if save { 1 } else { 0 };
+        // Reference: "Set Power Condition Timer Subcommand" [6.1] pg. 259
         let sector_number = enable << 5 | save << 4 | 0x02;
+        // Reference: "Set Features (EFh)" [6.1] pg. 254
         let mut cdb = build_ata_passthrough12(
             AtaCmd::SetFeature,
+            // Reference: "Non-Data commands" [6.1] pg. 127
             Protocol::None,
+            // Reference: "4Ah Extended Power Conditions" [6.1] pg. 254
             0b0100_1010,
             mode.id() as u16,
             sector_number,
@@ -258,13 +288,21 @@ impl Device {
     /// if `enable` set to true, enable specific power mode
     ///
     /// if `save` set to true, save setting
+    // Audit: Exact copy of `set_timer`, with `timer` set to 0
+    // Audit: will always disable timer for the given `mode` even if `enable` is true, see reference below
+    // Reference: "if Enable is set to one and the Timer field is zero, then disable the Current Timer" [6.1] pg. 259
+    // Audit: DONE
     pub fn set_state(&mut self, mode: PowerMode, enable: bool, save: bool) -> Result<()> {
         let enable = if enable { 1 } else { 0 };
         let save = if save { 1 } else { 0 };
+        // Reference: "Set Power Condition Timer Subcommand" [6.1] pg. 259
         let sector_number = enable << 5 | save << 4 | 0x02;
+        // Reference: "Set Features (EFh)" [6.1] pg. 254
         let mut cdb = build_ata_passthrough12(
             AtaCmd::SetFeature,
+            // Reference: "Non-Data commands" [6.1] pg. 127
             Protocol::None,
+            // Reference: "4Ah Extended Power Conditions" [6.1] pg. 254
             0b0100_1010,
             mode.id() as u16,
             sector_number,
@@ -279,7 +317,15 @@ impl Device {
     /// Enable EPC feature
     ///
     /// **This will disable APM**
+    /// 
+    /// If the EPC feature set is enabled, then the EPC feature set remains enabled
+    /// across all resets (i.e., power-on reset, hardware reset, and software reset).
+    // Audit: DONE
     pub fn enable_epc(&mut self) -> Result<()> {
+        // Reference: "Set Features (EFh)" [6.1] pg. 254
+        // Reference: "Non-Data commands" [6.1] pg. 127
+        // Reference: "4Ah Extended Power Conditions" [6.1] pg. 254
+        // Reference: "Enable the EPC Feature Subcommand" [6.1] pg. 262
         let mut cdb =
             build_ata_passthrough12(AtaCmd::SetFeature, Protocol::None, 0b0100_1010, 0, 0x04, 0);
 
@@ -291,7 +337,15 @@ impl Device {
     /// Disable EPC feature
     ///
     /// **This doesn't re-enable APM, you must enable APM manually on demand**
+    /// 
+    /// If the EPC feature set is disabled, then the EPC feature set remains disabled
+    /// across all resets (i.e., power-on reset, hardware reset, and software reset).
+    // Audit: DONE
     pub fn disable_epc(&mut self) -> Result<()> {
+        // Reference: "Set Features (EFh)" [6.1] pg. 254
+        // Reference: "Non-Data commands" [6.1] pg. 127
+        // Reference: "4Ah Extended Power Conditions" [6.1] pg. 254
+        // Reference: "Disable the EPC Feature Subcommand" [6.1] pg. 263
         let mut cdb =
             build_ata_passthrough12(AtaCmd::SetFeature, Protocol::None, 0b0100_1010, 0, 0x05, 0);
 
@@ -300,14 +354,24 @@ impl Device {
         Ok(())
     }
 
+    /// Restore power condition settings
+    /// 
+    /// Restores the power condition settings of this `mode` to the "default" (if `default` is true)
+    /// or "saved" (if `default` is false) values.\
+    /// If `save` is true, the restored settings are saved as the new "saved" settings.
+    // Audit: DONE
     pub fn restore(&mut self, mode: PowerMode, default: bool, save: bool) -> Result<()> {
         let default = if default { 1 } else { 0 };
         let save = if save { 1 } else { 0 };
+        // Reference: "Restore Power Condition Settings subcommand" [6.1] pg. 257
         let sector_number = default << 6 | save << 4;
 
+        // Reference: "Set Features (EFh)" [6.1] pg. 254
         let mut cdb = build_ata_passthrough12(
             AtaCmd::SetFeature,
+            // Reference: "Non-Data commands" [6.1] pg. 127
             Protocol::None,
+            // Reference: "4Ah Extended Power Conditions" [6.1] pg. 254
             0b0100_1010,
             mode.id() as u16,
             sector_number,
