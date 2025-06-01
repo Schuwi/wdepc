@@ -193,6 +193,7 @@ pub fn build_ata_passthrough16(
 
     // Audit: 0xa0 = 0b1010_0000
     // Audit: [1.2] describes these bits as "Obsolete" (as of SAT 1.0, see "Table 87")
+    // Audit: The Western Digital protocol seems to use them anyway, see [6.1]
     // Audit: Apparently all of the four commands in use (AtaCmd) either require these two bits to be set
     // Audit: or do not care about them at all. [6.1]
     // Reference: "Table 96" [6.1]
