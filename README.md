@@ -154,6 +154,13 @@ multiple independent sources to ensure correctness.
 For the high-level ATA commands I have only relied on the HC320 SATA spec [6.1] linked by the author,
 which is published by Western Digital and should be trustworthy.
 
+There is one minor concern. According to one source [5.1], the `SAT_ATA_PASS_THROUGH12` SCSI command
+that is used for almost all ATA commands executed by this tool, "clashes with MMC BLANK command" because
+it uses the same SCSI command code `0xA1`. It's also listed in [1.1] as "BLANK" but I could not determine
+what this command does exactly.\
+From the name "MMC BLANK" it COULD be related to eMMC memory cards - so maybe just make sure you don't
+accidentally use this tool on such devices.
+
 ## References
 - [1.1] https://www.t10.org/lists/op-num.htm ([accessed 2025-06-01](https://web.archive.org/web/20250601094958/https://www.t10.org/lists/op-num.htm "Wayback Machine"))
 - [1.2] INCITS/T10: SCSI / ATA Translation (SAT), Draft 9 (13 September 2006, https://web.archive.org/web/20070221091003/http://www.t10.org/ftp/t10/drafts/sat/sat-r09.pdf)
